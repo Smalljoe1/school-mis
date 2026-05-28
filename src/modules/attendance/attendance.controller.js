@@ -1,6 +1,6 @@
 const service = require('./attendance.service');
 const asyncHandler = require('../../utils/asyncHandler');
-const { success, paginated } = require('../../utils/apiResponse');
+const { success, error, paginated } = require('../../utils/apiResponse');
 
 const getAll = asyncHandler(async (req, res) => {
   const { data, total, page, limit } = await service.getAll(req.query);
@@ -25,7 +25,7 @@ const getStudentRate = asyncHandler(async (req, res) => {
   const { studentId } = req.params;
   const { sessionId, termId } = req.query;
   if (!sessionId || !termId) {
-    return success(res, null, 'sessionId and termId query params required', 400);
+    return error(res, 'sessionId and termId query params required', 400);
   }
   const rate = await service.getStudentRate(studentId, sessionId, termId);
   success(res, rate, 'Attendance rate retrieved');
