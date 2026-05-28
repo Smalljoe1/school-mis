@@ -1,0 +1,255 @@
+openapi: "3.0.0"
+info:
+  title: School MIS API
+  version: "1.0.0"
+  description: |
+    REST API for the School Management Information System — monitors enrolment,
+    attendance, and academic performance in secondary schools.
+servers:
+  - url: /api/v1
+    description: API v1
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          nullable: true
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+    description: Authentication and user profile
+  - name: Users
+    description: User management (Admin only)
+  - name: Students
+    description: Student registration and management
+  - name: Teachers
+    description: Teacher management
+  - name: Classes
+    description: Class management
+  - name: Subjects
+    description: Subject catalogue
+  - name: Enrolments
+    description: Student enrolment records
+  - name: Attendance
+    description: Daily attendance recording and analysis
+  - name: Assessments
+    description: Score entry and grade computation
+  - name: Reports
+    description: Term and class performance reports
+  - name: Analytics
+    description: Trend analysis and at-risk detection
+  - name: Alerts
+    description: Student alerts and notifications
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+
+  /auth/login:
+    post:
+      summary: Obtain a JWT token
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Login successful
+        "401":
+          description: Invalid credentials
+
+  /auth/profile:
+    get:
+      summary: Get current user profile
+      tags: [Auth]
+      responses:
+        "200":
+          description: Profile data
+
+  /students:
+    get:
+      summary: List students
+      tags: [Students]
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Paginated student list
+    post:
+      summary: Register a student
+      tags: [Students]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [admissionNo, firstName, lastName, gender]
+              properties:
+                admissionNo: { type: string }
+                firstName: { type: string }
+                lastName: { type: string }
+                gender: { type: string, enum: [Male, Female] }
+                dateOfBirth: { type: string, format: date }
+                parentName: { type: string }
+                parentPhone: { type: string }
+      responses:
+        "201":
+          description: Student created
+
+  /attendance:
+    post:
+      summary: Record attendance for a student
+      tags: [Attendance]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studentId, classId, sessionId, termId, attendanceDate, status]
+              properties:
+                studentId: { type: integer }
+                classId: { type: integer }
+                sessionId: { type: integer }
+                termId: { type: integer }
+                attendanceDate: { type: string, format: date }
+                status:
+                  type: string
+                  enum: [Present, Absent, Late, Excused]
+      responses:
+        "201":
+          description: Attendance recorded
+
+  /attendance/bulk:
+    post:
+      summary: Record attendance for a whole class
+      tags: [Attendance]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [classId, sessionId, termId, attendanceDate, records]
+              properties:
+                classId: { type: integer }
+                sessionId: { type: integer }
+                termId: { type: integer }
+                attendanceDate: { type: string, format: date }
+                records:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      studentId: { type: integer }
+                      status: { type: string }
+      responses:
+        "201":
+          description: Bulk attendance recorded
+
+  /assessments:
+    post:
+      summary: Enter assessment scores
+      tags: [Assessments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studentId, subjectId, classId, sessionId, termId, testScore, assignmentScore, examScore]
+              properties:
+                studentId: { type: integer }
+                subjectId: { type: integer }
+                classId: { type: integer }
+                sessionId: { type: integer }
+                termId: { type: integer }
+                testScore: { type: number }
+                assignmentScore: { type: number }
+                examScore: { type: number }
+      responses:
+        "201":
+          description: Assessment created
+
+  /reports/student/{studentId}:
+    get:
+      summary: Student term report
+      tags: [Reports]
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: sessionId
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: termId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Student report
+
+  /analytics/at-risk:
+    get:
+      summary: Students at risk
+      tags: [Analytics]
+      parameters:
+        - in: query
+          name: sessionId
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: termId
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: minAttendanceRate
+          schema: { type: number, default: 70 }
+        - in: query
+          name: minAvgScore
+          schema: { type: number, default: 45 }
+      responses:
+        "200":
+          description: At-risk student list
